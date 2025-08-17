@@ -6,7 +6,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Serve static files (player.html)
-app.use(express.static(path.join(__dirname, "index.html")));
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
 
 // CORS headers for all responses
 app.use((req, res, next) => {
@@ -96,4 +99,5 @@ app.get('/proxy', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
 });
+
 
