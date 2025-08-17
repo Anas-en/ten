@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>💗 Dark Stream Player</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0b0b0d;
+      --grad-start: #1a1a1d;
+      --grad-end: #0e0e10;
+      --accent: #ff4d6d;
+      --accent-dark: #e6003e;
+      --text: #f0f0f0;
+      --muted: #555;
+      --radius: 12px;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at top left, var(--grad-start), var(--grad-end));
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      margin-bottom: 1rem;
+      color: var(--accent);
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+    }
+
+    #startBtn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 1.1rem;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.15s ease;
+      box-shadow: 0 4px 12px rgba(255, 77, 109, 0.4);
+    }
+
+    #startBtn:hover {
+      background: var(--accent-dark);
+      transform: translateY(-2px);
+    }
+
+    .player-container {
+      position: relative;
+      width: 90%;
+      max-width: 960px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
+      background: #111;
+      display: none;
+    }
+
+    video {
+      width: 100%;
+      display: block;
+      background: black;
+      cursor: url('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 32 29.6\'%3E%3Cpath fill=\'%23ff4d6d\' d=\'M23.6,0C20.4,0,18,2.4,16,4.6C14,2.4,11.6,0,8.4,0C3.8,0,0,3.8,0,8.4c0,4.5,4.1,8.3,10.3,14.1L16,29.6l5.7-7.1C27.9,16.8,32,13,32,8.4C32,3.8,28.2,0,23.6,0z\'/%3E%3C/svg%3E') 16 16, pointer;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 1rem;
+      background: #1f1f22;
+    }
+
+    .controls button {
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 1.3rem;
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+
+    .controls button:hover {
+      color: var(--accent);
+    }
+
+    .progress {
+      flex: 1;
+      margin: 0 1rem;
+      height: 6px;
+      background: #333;
+      border-radius: 3px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .progress-filled {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      border-radius: 3px;
+    }
+
+    .overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.7);
+      color: var(--accent);
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius);
+      font-size: 1.1rem;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .overlay.show {
+      opacity: 1;
+    }
+
+    .footer {
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .heart {
+      position: absolute;
+      font-size: 1.6rem;
+      color: var(--accent);
+      animation: float 1s ease-out forwards;
+      pointer-events: none;
+    }
+
+    @keyframes float {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-80px) scale(1.4); }
+    }
+  </style>
+</head>
+<body>
+  <h1>💗 Dark Stream Player</h1>
+  <button id="startBtn">▶ Start Watching</button>
+
+  <div class="player-container">
+    <video id="video"></video>
+    <div class="overlay" id="overlay"></div>
+    <div class="controls">
+      <button id="playPause">⏯</button>
+      <div class="progress" id="progressBar">
+        <div class="progress-filled" id="progressFilled"></div>
+      </div>
+      <button id="mute">🔊</button>
+      <button id="fullscreen">⛶</button>
+    </div>
+  </div>
+
+  <div class="footer">Scroll on video ▶ volume | Shift+scroll ▶ speed | dblclick ▶ fullscreen</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script>
+    const startBtn        = document.getElementById('startBtn');
+    const video           = document.getElementById('video');
+    const container       = document.querySelector('.player-container');
+    const playPauseBtn    = document.getElementById('playPause');
+    const muteBtn         = document.getElementById('mute');
+    const fullBtn         = document.getElementById('fullscreen');
+    const progBar         = document.getElementById('progressBar');
+    const progFilled      = document.getElementById('progressFilled');
+    const overlay         = document.getElementById('overlay');
+
+    function showOverlay(msg) {
+      overlay.textContent = msg;
+      overlay.classList.add('show');
+      clearTimeout(overlay._timeout);
+      overlay._timeout = setTimeout(() => overlay.classList.remove('show'), 800);
+    }
+
+    function togglePlay() {
+      if (video.paused) {
+        video.play();
+        playPauseBtn.textContent = '⏸';
+      } else {
+        video.pause();
+        playPauseBtn.textContent = '▶';
+      }
+    }
+
+    function toggleFull() {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else container.requestFullscreen();
+    }
+
+    startBtn.addEventListener('click', () => {
+      const target = 'https://indvseng.pages.dev/sony';
+      fetch(`/scrape?url=${encodeURIComponent(target)}`)
+        .then(r => r.json())
+        .then(d => {
+          if (!d.m3u8 || !d.m3u8.length) throw 'No stream';
+          const url   = '/proxy?url=' + encodeURIComponent(d.m3u8[0]);
+          if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(url);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+              container.style.display = 'block';
+              video.play();
+            });
+          } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = url;
+            video.onloadedmetadata = () => {
+              container.style.display = 'block';
+              video.play();
+            };
+          }
+        })
+        .catch(e => { console.error(e); alert('Stream load failed'); });
+    });
+
+    playPauseBtn.addEventListener('click', togglePlay);
+    muteBtn.addEventListener('click', () => {
+      video.muted = !video.muted;
+      muteBtn.textContent = video.muted ? '🔇' : '🔊';
+    });
+    fullBtn.addEventListener('click', toggleFull);
+
+    video.addEventListener('click', e => {
+      togglePlay();
+      // spawn heart
+      const heart = document.createElement('div');
+      heart.className = 'heart';
+      heart.textContent = '💗';
+      heart.style.left = `${e.clientX - 12}px`;
+      heart.style.top  = `${e.clientY - 20}px`;
+      document.body.appendChild(heart);
+      setTimeout(() => heart.remove(), 1000);
+    });
+
+    video.addEventListener('dblclick', toggleFull);
+
+    video.addEventListener('timeupdate', () => {
+      progFilled.style.width = `${(video.currentTime / video.duration) * 100}%`;
+    });
+
+    progBar.addEventListener('click', e => {
+      const rect = progBar.getBoundingClientRect();
+      video.currentTime = ((e.clientX - rect.left) / rect.width) * video.duration;
+    });
+
+    video.addEventListener('wheel', e => {
+      e.preventDefault();
+      if (e.shiftKey) {
+        // speed
+        video.playbackRate = Math.max(0.5, Math.min(3,
+          +(video.playbackRate + (e.deltaY<0?0.1:-0.1)).toFixed(1)
+        ));
+        showOverlay(`Speed: ${video.playbackRate}×`);
+      } else {
+        // volume
+        video.volume = Math.max(0, Math.min(1,
+          +(video.volume + (e.deltaY<0?0.05:-0.05)).toFixed(2)
+        ));
+        showOverlay(`Vol: ${Math.round(video.volume*100)}%`);
+      }
+    });
+  </script>
+</body>
+</html>
